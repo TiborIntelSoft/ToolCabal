@@ -1,0 +1,3 @@
+import UseAg
+
+main = print $ runAG ["Hallo", " ", "world", "!"]

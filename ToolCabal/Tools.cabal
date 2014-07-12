@@ -1,0 +1,75 @@
+name:                   Tools
+version:                0.1
+synopsis:               A library for simple use of external programs
+description:            A library for simple use of external programs
+build-type:             Simple
+license:                AllRightsReserved
+author:                 Tibor Bremer
+cabal-version:          >= 1.8
+extra-source-files:     
+
+library
+   exposed-modules:     Debug,
+                        Cabal,
+                        Tools.DSet,
+                        Tools.Flag,
+                        Tools.Core.Core,
+                        Tools.Core.Plugin,
+                        Tools.Core.ToolMonad,
+                        Tools.Core.TypedMonad,
+                        Tools.Core.Types,
+                        Tools.Core.Utils,
+                        Tools.Cabal.Build,
+                        Tools.Cabal.BuildInfo,
+                        Tools.Cabal.Compiler,
+                        Tools.Cabal.FileFormat,
+                        Tools.Cabal.Haddock,
+                        Tools.Cabal.Install,
+                        Tools.Cabal.PreProcess,
+                        Tools.BasicTools.CPPHS,
+                        Tools.BasicTools.GHC,
+                        Tools.BasicTools.Haddock,
+                        Tools.BasicTools.HsColour,
+                        Tools.BasicTools.Shared,
+                        Tools.BasicTools.Types,
+                        Tools.BasicTools.UHC,
+                        Tools.BasicTools.UUAGC,
+                        Cabal.Environment,
+                        Cabal.Exception,
+                        Cabal.Find,
+                        Cabal.Program,
+                        Cabal.ReadP,
+                        Cabal.Run,
+                        Cabal.System,
+                        Cabal.Text,
+                        Cabal.Types,
+                        Cabal.Utils,
+                        Cabal.Verbosity,
+                        Cabal.Version
+  build-depends:        base,
+                        process,
+                        unix,
+                        pretty,
+                        directory,
+                        filepath,
+                        bytestring,
+                        containers,
+                        lens,
+                        mtl >= 2.2,
+                        uu-parsinglib,
+                        shake
+
+executable toolCabal
+    main-is:            Main.hs
+    build-depends:      base,
+                        process,
+                        unix,
+                        pretty,
+                        directory,
+                        filepath,
+                        bytestring,
+                        containers,
+                        lens,
+                        mtl,
+                        uu-parsinglib,
+                        shake

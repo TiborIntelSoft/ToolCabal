@@ -1,0 +1,15 @@
+module {AG}{}{}
+
+data SStrings 
+  | NilString 
+  | ConsString x :: SString xs :: SStrings
+
+data SString 
+  | SString s :: String
+
+attr SString SStrings
+  syn cString use {(++)} {""} :: String
+
+sem SString
+  | SString
+    lhs.cString = @s

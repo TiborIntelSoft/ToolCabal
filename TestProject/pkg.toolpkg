@@ -1,0 +1,20 @@
+Name:               HalloWorld
+Version:            1
+
+Executable:         Hallo
+  Main-module-path: Main.hs
+  Source-files:     UseAg.hs AG.hs
+    Use-tool:       uuagc 
+                      (AG.ag, AG.hs, -fscdwH)
+    Use-tool:       ./_build/isttool 
+                      (Main.ist, Main.hs,)
+  Packages: base
+
+Tool:               isttool
+  Main-module-path: IstPlugin.hs
+  Source-files:
+  Packages: base lens Tools directory transformers
+
+Global:
+  Source-files:
+  Packages:
