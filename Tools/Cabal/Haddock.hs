@@ -8,7 +8,7 @@ import qualified Data.Set as S
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List (intercalate)
-import System.FilePath
+import Development.Shake.FilePath
 import System.Directory
 
 import Tools.Core.ToolMonad
@@ -46,8 +46,8 @@ cabalHsColour settings = do
   makeBasicConfiguration "HsColour"
   liftIO $ createDirectoryIfMissing True $ bdir
   hc1 <- getCurrent
-  hc2 <- TM.setSetting "print-css" hc1
-  hc3 <- TM.setOutputFile (bdir </> "hscolour.css") hc2
+  hc2 <- TM.setSetting hc1 "print-css"
+  hc3 <- TM.setOutputFile hc2 (bdir </> "hscolour.css")
   TM.invoke hc3
   --setOutputFile $ settings ^. colorSrcDir
   setSetting "css"
@@ -61,6 +61,6 @@ cabalHsColour settings = do
   where bdir = settings ^. documentationDir </> settings ^. colorSrcDir
 setArgAndOutput :: String -> AnyTool -> String -> ToolMonad AnyTool
 setArgAndOutput bdir ct s = do
-  ct1 <- TM.setArgument s ct
-  TM.setOutputFile (bdir </> ss) ct1
+  ct1 <- TM.setArgument ct s
+  TM.setOutputFile ct1 (bdir </> ss)
   where ss = addExtension (dropExtension s) "html"

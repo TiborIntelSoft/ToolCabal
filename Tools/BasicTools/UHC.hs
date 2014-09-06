@@ -12,7 +12,7 @@ import Tools.Flag
 --runHaddock :: ToolMonad String
 runUHC = do
   makeBasicConfiguration "uhc"
-  setInputFile "HsTest.hs"
+  addInputFile "HsTest.hs"
   setOutputFile "HsTest"
   setOutputDir "dist"
   --printCurrent

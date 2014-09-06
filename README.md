@@ -3,13 +3,22 @@ ToolCabal
 
 Extending Cabal with Plugins, Preprocessors and Multi-target Compilers
 
-This is an alpha version and documentation is virtually non-existing.
+This a rewrite form scratch of the build system of cabal
 
-Also functionality is very limited. only building executables using GHC is supported.
+This is a beta version and documentation is not yet complete.
+
+The following is supported:
+- Multiple targets and flavours to be build simultaneously (only GHC)
+  - Use --compiler-target=TARGET and --compiler-flavour=FLAVOUR flags
+- use preprocessors directly in the package description
+  - use-tool PREPROCESSOR (INPUTFILE, OUTPUTFILE, FLAGS)
+      - FLAGS are always written as -f -f=OPTION --f --f=OPTION syntax
+- plugins for preprocessors
+  - see for an example the istTool.hs file inside TestProject
+- For the new package description format
+    - see example inside the TestProject
 
 To test:
 - build the tools library and toolCabal executable (using cabal)
 - run toolCabal in the TestProject folder
-
-A beta version, including documentation and usage guide, will be released by September 6. Both here as on Hackage.
 

@@ -11,31 +11,33 @@ module Tools.Core.Types
   KnownTool (..),
   KnownOutputTool (..),
   KnownPreProcessor (..),
-  KnownPackageManager (..),
+  KnownCompiler (..),
 
   -- * lens accessors
   getTool, configuredProgram, flags, arguments,
   getOutputTool, configuredTool, inputDirs, outputDir, inputFiles, outputFile,
   getPreProcessor, configuredOutputTool, processFiles, baseDir,
-  getPackageManager, configuredPreProcessor, packageDb,
+  getCompiler, configuredPreProcessor, packageDb,
 
   -- * Configured data types
   ConfiguredTool (..),
   ConfiguredOutputTool (..),
   ConfiguredPreProcessor (..),
-  ConfiguredPackageManager (..),
+  ConfiguredCompiler (..),
 
   -- * Monad data types
   AnyTool (..),
   ErrorType (..),
   ToolState (..),
 
+  -- * Other data types
+  PackageDb (..),
+
   -- * Classes
   Tool (..),
   OutputTool (..),
   PreProcessor (..),
-  PackageManager (..),
-  StateActions (..)
+  Compiler (..)
 )
 where
 

@@ -5,7 +5,7 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Control.Monad.State
 import Control.Monad.Except
-import System.FilePath
+import Development.Shake.FilePath
 import Tools.Core.ToolMonad
 import Tools.BasicTools.Shared
 import Tools.Flag

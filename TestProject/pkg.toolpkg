@@ -1,11 +1,15 @@
 Name:               HalloWorld
 Version:            1
 
+Library:            TestLibrary
+  Version:          1
+  Exposed modules:  UseAg.hs
+  Source-files:     
+  Packages: 
+
 Executable:         Hallo
   Main-module-path: Main.hs
-  Source-files:     UseAg.hs AG.hs
-    Use-tool:       uuagc 
-                      (AG.ag, AG.hs, -fscdwH)
+  Source-files:     
     Use-tool:       ./_build/isttool 
                       (Main.ist, Main.hs,)
   Packages: base
@@ -16,5 +20,7 @@ Tool:               isttool
   Packages: base lens Tools directory transformers
 
 Global:
-  Source-files:
-  Packages:
+  Source-files:     UseAg.hs AG.hs
+    Use-tool:       uuagc 
+                      (AG.ag, AG.hs, -fscdwH)
+  Packages: base

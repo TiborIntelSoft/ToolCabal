@@ -4,7 +4,7 @@ module Tools.Core.Utils
   emptyConfigureTool,
   emptyConfigureOutputTool,
   emptyConfigurePreProcessor,
-  emptyConfigurePackageManager,
+  emptyConfigureCompiler,
 
   -- * Configurations
   configureTool,
@@ -14,14 +14,16 @@ module Tools.Core.Utils
   newConfigurePreProcessor,
   configurePreProcessor,
   configureFullPreProcessor,
-  newConfigurePackageManager,
-  configurePackageManager,
-  configureFullPackageManager,
+  newConfigureCompiler,
+  configureCompiler,
+  configureFullCompiler,
 
   -- * Utils
   verifyFlags,
   throwError,
   catchError,
+  run,
+  runError,
 
   -- * Default functions
   defaultInvoke,

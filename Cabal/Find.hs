@@ -38,7 +38,7 @@ import System.Directory
          ( findExecutable )
 import Cabal.Environment
          ( getEnvironment )
-import System.FilePath
+import Development.Shake.FilePath
          ( (</>), (<.>), splitSearchPath, searchPathSeparator )
 import Data.List
          ( intercalate )

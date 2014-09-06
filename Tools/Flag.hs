@@ -144,26 +144,49 @@ checkArgument (Just _) (Just (Free _)) = True
 checkArgument (Just f) (Just (Choice s)) = f `S.member` s
 checkArgument _ _ = False
 
+-- * Flag retrieval
+
+-- | Retrieves all flags with the given name
+-- from a set of flags. Returns nothing if
+-- the name refers to two or more distinct names
 getFlags :: String -> Set Flag -> Maybe [Flag]
 getFlags s d = if allEqual mf then (Just mf) else Nothing
   where dl = S.toList d
         mf = filter f dl
         f (Flag {_shortName = sn, _longName = ln}) = sn == s || ln == s
 
+-- | Retrieves all flags with the given name
+-- (retrieved from the input @Flag@
+-- from a set of flags. Returns nothing if
+-- the name refers to two or more distinct names
+getFlagsWithFlag :: Flag -> Set Flag -> Maybe [Flag]
+getFlagsWithFlag (Flag {_shortName = sn, _longName = ln}) d = if allEqual mf then (Just mf) else Nothing
+  where dl = S.toList d
+        mf = filter f dl
+        f (Flag {_shortName = snn, _longName = lnn}) = sn == snn || ln == lnn
+
+-- | Retrieve the @Flag@ with the given name
+-- from a set of flags. It throws away the arguments.
+-- Use when it is unclear wheter the name represents
+-- the short or long name of a @Flag@
 getEmptyFlag :: String -> Set Flag -> Maybe Flag
 getEmptyFlag s d = case getFlags s d of
   Nothing -> Nothing
   Just mf -> Just $ baseFlag $ head mf
 
+-- | Checks if all @Flag@s represent the same
+-- @Flag@.
 allEqual :: [Flag] -> Bool
 allEqual [] = True
 allEqual ((Flag {_shortName = s, _longName = l}):xs) = allEqual' xs
   where allEqual' [] = True
         allEqual' ((Flag {_shortName = sn, _longName = ln}):xs) = sn == s && ln == l && allEqual' xs
 
+-- | Removes the argument from a @Flag@
 baseFlag :: Flag -> Flag
 baseFlag (Flag {_shortName = sn, _longName = ln}) = emptyFlag {_shortName = sn, _longName = ln}
 
+-- Retrieve a flag based on the supplied argument
 findFlagWithArg :: String -> [Flag] -> Maybe Flag
 findFlagWithArg s (f@(Flag {_defaultArgument = Just a}):xs) = if a == s then Just f else findFlagWithArg s xs
 findFlagWithArg _ _ = Nothing

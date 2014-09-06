@@ -7,7 +7,7 @@ module Tools.Core.ToolMonad
   C.storeTool,
   C.storeOutputTool,
   C.storePreProcessor,
-  C.storePackageManager,
+  C.storeCompiler,
   C.store,
   C.storeAnyTool,
   C.load,
@@ -38,6 +38,7 @@ module Tools.Core.ToolMonad
   C.debug,
   C.notice,
   C.info,
+  C.withOtherCurrent,
 
   -- * Data types 
   ToolMonad,
@@ -54,20 +55,34 @@ import Cabal (Verbosity)
 import Tools.Core.Core (ToolMonad, Target)
 import qualified Tools.Core.Core as C
 
+import Debug
+
+-- | Alias for @saveCurrent@
 save' :: String -> ToolMonad ()
-save' = C.saveC
+save' = C.saveCurrent
 
-setInputFile :: String -> ToolMonad ()
-setInputFile = C.setInputFileC
+-- | Alias for @addInputFileC@
+addInputFile :: String -> ToolMonad ()
+addInputFile = C.addInputFileC
 
+-- | Alias for @setOutputFileC@
 setOutputFile :: String -> ToolMonad ()
 setOutputFile = C.setOutputFileC
 
+-- | Alias for @setOutputDirC@
 setOutputDir :: String -> ToolMonad ()
 setOutputDir = C.setOutputDirC
 
+-- | Alias for @addInputDirC@
 addInputDir :: String -> ToolMonad ()
 addInputDir = C.addInputDirC
 
+-- | Alias for @prepareTransFormC@
 prepareTransForm :: Target -> String -> FilePath -> [[FilePath]] -> ToolMonad ()
 prepareTransForm = C.prepareTransFormC
+
+getHidePkgsFlag :: ToolMonad Flag
+getHidePkgsFlag = C.getHidePkgsFlagC
+
+getPackageFlag :: String -> ToolMonad Flag
+getPackageFlag = C.getPackageFlagC

@@ -12,7 +12,7 @@ import Tools.BasicTools.Shared
 --runHaddock :: ToolMonad String
 runGHC = do
   makeBasicConfiguration "ghc"
-  setInputFile "HsTest.hs"  
+  addInputFile "HsTest.hs"  
   setOutputDir "dist"
   --printCurrent
   x <- invoke

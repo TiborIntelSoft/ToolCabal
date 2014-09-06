@@ -1,0 +1,103 @@
+Name:                   Tools
+Version:                0.1
+
+Library:                Tools
+  Version:              0.1
+  Exposed modules:      Debug.hs
+                        Cabal.hs
+                        Tools/DSet.hs
+                        Tools/Flag.hs
+                        Tools/Core/Core.hs
+                        Tools/Core/Plugin.hs
+                        Tools/Core/ToolMonad.hs
+                        Tools/Core/TypedMonad.hs
+                        Tools/Core/Types.hs
+                        Tools/Core/Utils.hs
+                        Tools/Cabal/Build.hs
+                        Tools/Cabal/BuildInfo.hs
+                        Tools/Cabal/Compiler.hs
+                        Tools/Cabal/FileFormat.hs
+                        Tools/Cabal/Haddock.hs
+                        Tools/Cabal/Install.hs
+                        Tools/Cabal/PreProcess.hs
+                        Tools/BasicTools/CPPHS.hs
+                        Tools/BasicTools/GHC.hs
+                        Tools/BasicTools/Haddock.hs
+                        Tools/BasicTools/HsColour.hs
+                        Tools/BasicTools/Shared.hs
+                        Tools/BasicTools/Types.hs
+                        Tools/BasicTools/UHC.hs
+                        Tools/BasicTools/UUAGC.hs
+                        Cabal/Environment.hs
+                        Cabal/Exception.hs
+                        Cabal/Find.hs
+                        Cabal/Program.hs
+                        Cabal/ReadP.hs
+                        Cabal/Run.hs
+                        Cabal/System.hs
+                        Cabal/Text.hs
+                        Cabal/Types.hs
+                        Cabal/Utils.hs
+                        Cabal/Verbosity.hs
+                        Cabal/Version.hs
+  Source-files:
+  Packages:
+
+Executable:             toolCabal
+  Main-module-path:     Main.hs
+  Source-files:
+  Packages:             
+
+Global:
+  Source-files:         Debug.hs
+                        Cabal.hs
+                        Tools/DSet.hs
+                        Tools/Flag.hs
+                        Tools/Core/Core.hs
+                        Tools/Core/Plugin.hs
+                        Tools/Core/ToolMonad.hs
+                        Tools/Core/TypedMonad.hs
+                        Tools/Core/Types.hs
+                        Tools/Core/Utils.hs
+                        Tools/Cabal/Build.hs
+                        Tools/Cabal/BuildInfo.hs
+                        Tools/Cabal/Compiler.hs
+                        Tools/Cabal/FileFormat.hs
+                        Tools/Cabal/Haddock.hs
+                        Tools/Cabal/Install.hs
+                        Tools/Cabal/PreProcess.hs
+                        Tools/Cabal/FileFormatParser.hs
+                        Tools/Cabal/Shake.hs
+                        Tools/BasicTools/CPPHS.hs
+                        Tools/BasicTools/GHC.hs
+                        Tools/BasicTools/Haddock.hs
+                        Tools/BasicTools/HsColour.hs
+                        Tools/BasicTools/Shared.hs
+                        Tools/BasicTools/Types.hs
+                        Tools/BasicTools/UHC.hs
+                        Tools/BasicTools/UUAGC.hs
+                        Cabal/Environment.hs
+                        Cabal/Exception.hs
+                        Cabal/Find.hs
+                        Cabal/Program.hs
+                        Cabal/ReadP.hs
+                        Cabal/Run.hs
+                        Cabal/System.hs
+                        Cabal/Text.hs
+                        Cabal/Types.hs
+                        Cabal/Utils.hs
+                        Cabal/Verbosity.hs
+                        Cabal/Version.hs
+  Packages:             base
+                        process
+                        unix
+                        pretty
+                        directory
+                        filepath
+                        bytestring
+                        containers
+                        lens
+                        mtl
+                        uu-parsinglib
+                        shake
+                        haskell-src-exts

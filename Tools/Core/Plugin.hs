@@ -14,7 +14,7 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe
 import Data.List (intercalate, isPrefixOf)
-import System.FilePath (combine, (</>))
+import Development.Shake.FilePath (combine, (</>))
 import Control.Lens hiding (Setting)
 import Control.Monad.State
 import Control.Monad.Except
@@ -26,11 +26,19 @@ import Tools.DSet
 
 import Debug
 
+-- | All the data neccessary to use an external
+-- program in the same way as an internal class
+-- instance
 data ToolPlugin = ToolPlugin {
+  -- | The name of the plugin
   _pluginName :: String,
+  -- | The program representing this plugin
   _pluginProgram :: ConfiguredProgram,
+  -- | Wheter or not it is an @OutputTool@ plugin
   _isOutputTool :: Bool,
+  -- | Wheter or not it is an @PreProcessor@ plugin
   _isPreProcessor :: Bool,
+  -- | Wheter or not it is an @Compiler@ plugin
   _isPackagageManager :: Bool
   }
 deriving instance Show ToolPlugin
@@ -89,12 +97,12 @@ instance PreProcessor ToolPlugin where
         fs <- callPlugin p "supportedTargets" []
         return $ read fs
       else supportedTargets Dummy cp
-  sourceTypes p cp ft = do
+  targetTypes p cp ft = do
     if p ^. isPreProcessor
       then do
-        fs <- callPlugin p "sourceTypes" [ft]
+        fs <- callPlugin p "targetTypes" [ft]
         return $ read fs
-      else sourceTypes Dummy cp ft
+      else targetTypes Dummy cp ft
   directDependencies p cp ft fp = do
     if p ^. isPreProcessor
       then do
@@ -132,44 +140,46 @@ instance PreProcessor ToolPlugin where
         return $ read fs
       else outputFileFlagArg Dummy s
 
-instance PackageManager ToolPlugin where
-  init p cpm s = do
-    if p ^. isPackagageManager
-      then do
-        fs <- callPlugin p "init" [showCPM cpm, s]
-        return $ readPCT p fs
-      else init Dummy cpm s
-  register p cpm s = do
-    if p ^. isPackagageManager
-      then do
-        fs <- callPlugin p "register" [showCPM cpm, s]
-        return $ readPCT p fs
-      else register Dummy cpm s
-  unregister p cpm s = do
-    if p ^. isPackagageManager
-      then do
-        fs <- callPlugin p "unregister" [showCPM cpm, s]
-        return $ readPCT p fs
-      else unregister Dummy cpm s
-  expose p cpm s = do
-    if p ^. isPackagageManager
-      then do
-        fs <- callPlugin p "expose" [showCPM cpm, s]
-        return $ readPCT p fs
-      else expose Dummy cpm s
-  hide p cpm s = do
-    if p ^. isPackagageManager
-      then do
-        fs <- callPlugin p "hide" [showCPM cpm, s]
-        return $ readPCT p fs
-      else hide Dummy cpm s
-  list p cpm s = do
-    if p ^. isPackagageManager
-      then do
-        fs <- callPlugin p "list" [showCPM cpm, s]
-        return $ readPCT p fs
-      else list Dummy cpm s
+instance Compiler ToolPlugin where
+  --init p cpm s = do
+  --  if p ^. isPackagageManager
+  --    then do
+  --      fs <- callPlugin p "init" [showCPM cpm, s]
+  --      return $ readPCT p fs
+  --    else init Dummy cpm s
+  --register p cpm s = do
+  --  if p ^. isPackagageManager
+  --    then do
+  --      fs <- callPlugin p "register" [showCPM cpm, s]
+  --      return $ readPCT p fs
+  --    else register Dummy cpm s
+  --unregister p cpm s = do
+  --  if p ^. isPackagageManager
+  --    then do
+  --      fs <- callPlugin p "unregister" [showCPM cpm, s]
+  --      return $ readPCT p fs
+  --    else unregister Dummy cpm s
+  --expose p cpm s = do
+  --  if p ^. isPackagageManager
+  --    then do
+  --      fs <- callPlugin p "expose" [showCPM cpm, s]
+  --      return $ readPCT p fs
+  --    else expose Dummy cpm s
+  --hide p cpm s = do
+  --  if p ^. isPackagageManager
+  --    then do
+  --      fs <- callPlugin p "hide" [showCPM cpm, s]
+  --      return $ readPCT p fs
+  --    else hide Dummy cpm s
+  --list p cpm s = do
+  --  if p ^. isPackagageManager
+  --    then do
+  --      fs <- callPlugin p "list" [showCPM cpm, s]
+  --      return $ readPCT p fs
+  --    else list Dummy cpm s
 
+-- | Executes a call to the plugin.
+-- It rethrows the error the plugin throws
 callPlugin :: ToolPlugin -> String -> [String] -> ToolMonad String
 callPlugin p f args = do 
   x <- defaultInvoke ct
@@ -190,7 +200,7 @@ readPCOT t = baseToCot t . read
 readPCP :: ToolPlugin -> String -> ConfiguredPreProcessor
 readPCP t = baseToCp t . read
 
-readPCPM :: ToolPlugin -> String -> ConfiguredPackageManager
+readPCPM :: ToolPlugin -> String -> ConfiguredCompiler
 readPCPM t = baseToCpm t . read
 
 readCT :: Tool t => t -> String -> ConfiguredTool
@@ -205,7 +215,7 @@ readCOT t = baseToCot t . read . read
 readCP :: PreProcessor t => t -> String -> ConfiguredPreProcessor
 readCP t = baseToCp t . read . read
 
-readCPM :: PackageManager t => t -> String -> ConfiguredPackageManager
+readCPM :: Compiler t => t -> String -> ConfiguredCompiler
 readCPM t = baseToCpm t . read . read
 
 showCT :: ConfiguredTool -> String
@@ -220,59 +230,67 @@ showCOT = show . cotToBase
 showCP :: ConfiguredPreProcessor -> String
 showCP = show . cpToBase
 
-showCPM :: ConfiguredPackageManager -> String
+showCPM :: ConfiguredCompiler -> String
 showCPM = show . cpmToBase
 
+-- | The relevant data from the @ConfiguredTool@
+-- data type
 data CTBase = CTBase
   (Set Flag)
   [String]
   deriving (Show, Read)
 
+-- | The relevant data from the @ConfiguredOutputTool@
+-- data type
 data COTBase = COTBase
   CTBase
   [FilePath]
-  (Maybe FilePath)
   [FilePath]
+  (Maybe FilePath)
   (Maybe FilePath)
   deriving (Show, Read)
 
+-- | The relevant data from the @ConfiguredPreProcessor@
+-- data type
 data CPBase = CPBase
   COTBase
   [PreProcess]
   FilePath
   deriving (Show, Read)
 
+-- | The relevant data from the @ConfiguredCompiler@
+-- data type
 data CPMBase = CPMBase
   CPBase
-  [String]
+  [PackageDb]
   deriving (Show, Read)
 
 ctToBase :: ConfiguredTool -> CTBase
 ctToBase (ConfiguredTool _ _ f a) = CTBase f a
 
 cotToBase :: ConfiguredOutputTool -> COTBase
-cotToBase (ConfiguredOutputTool _ ct ids od ifs mof) = COTBase (ctToBase ct) ids od ifs mof
+cotToBase (ConfiguredOutputTool _ ct ids ifs od mof) = COTBase (ctToBase ct) ids ifs od mof
 
 cpToBase :: ConfiguredPreProcessor -> CPBase
 cpToBase (ConfiguredPreProcessor _ cot pf bd) = CPBase (cotToBase cot) pf bd
 
-cpmToBase :: ConfiguredPackageManager -> CPMBase
-cpmToBase (ConfiguredPackageManager _ ct ps) = CPMBase (cpToBase ct) ps
+cpmToBase :: ConfiguredCompiler -> CPMBase
+cpmToBase (ConfiguredCompiler _ ct ps) = CPMBase (cpToBase ct) ps
 
 baseToCt :: Tool t => t -> CTBase -> ConfiguredTool
 baseToCt t (CTBase fs a) = ConfiguredTool (KnownTool t) (getProgram t) fs a
 
 baseToCot :: OutputTool t => t -> COTBase -> ConfiguredOutputTool
-baseToCot t (COTBase ct ids od ifs mof) = 
-    ConfiguredOutputTool (KnownOutputTool t) (baseToCt t ct) ids od ifs mof
+baseToCot t (COTBase ct ids ifs od mof) = 
+    ConfiguredOutputTool (KnownOutputTool t) (baseToCt t ct) ids ifs od mof
 
 baseToCp :: PreProcessor t => t -> CPBase -> ConfiguredPreProcessor
 baseToCp t (CPBase ct pps p) = 
   ConfiguredPreProcessor (KnownPreProcessor t) (baseToCot t ct) pps p
 
-baseToCpm :: PackageManager t => t -> CPMBase -> ConfiguredPackageManager
+baseToCpm :: Compiler t => t -> CPMBase -> ConfiguredCompiler
 baseToCpm t (CPMBase ct ps) = 
-  ConfiguredPackageManager (KnownPackageManager t) (baseToCp t ct) ps
+  ConfiguredCompiler (KnownCompiler t) (baseToCp t ct) ps
 
 -- * Dummy instance
 
@@ -285,7 +303,8 @@ instance Tool Dummy where
   supportedArguments _ _ = throwError $ Exception "This operation is not supported"
   optionalArguments _ _ = throwError $ Exception "This operation is not supported"
   requiredArguments _ _ = throwError $ Exception "This operation is not supported"
-  invokeTool _ _ = throwError $ Exception "This operation is not supported"
+  --invokeTool _ _ = throwError $ Exception "This operation is not supported"
+  invokeTool _ _ = return "Warning: Invoked dummy does not do anything"
   argToString _ _ = throwError $ Exception "This operation is not supported"
   flagToString _ _ = throwError $ Exception "This operation is not supported"
 instance OutputTool Dummy where
@@ -295,25 +314,25 @@ instance OutputTool Dummy where
   configureForInvoke _ _ = throwError $ Exception "This operation is not supported"
 instance PreProcessor Dummy where
   supportedTargets _ _ = throwError $ Exception "This operation is not supported"
-  sourceTypes _ _ _= throwError $ Exception "This operation is not supported"
+  targetTypes _ _ _= throwError $ Exception "This operation is not supported"
   directDependencies _ _ _ _ = throwError $ Exception "This operation is not supported"
   indirectDependencies _ _ _ _ _ = throwError $ Exception "This operation is not supported"
   transFormStep _ _ _ _ _ _ = throwError $ Exception "This operation is not supported"
   preProcess _ _ = throwError $ Exception "This operation is not supported"
   inputFileFlagArg _ _ = throwError $ Exception "This operation is not supported"
   outputFileFlagArg _ _ = throwError $ Exception "This operation is not supported"
-instance PackageManager Dummy where
-  init _ _ _ = throwError $ Exception "This operation is not supported"
-  register _ _ _ = throwError $ Exception "This operation is not supported"
-  unregister _ _ _ = throwError $ Exception "This operation is not supported"
-  expose _ _ _ = throwError $ Exception "This operation is not supported"
-  hide _ _ _ = throwError $ Exception "This operation is not supported"
-  list _ _ _ = throwError $ Exception "This operation is not supported"
+instance Compiler Dummy where
+  --init _ _ _ = throwError $ Exception "This operation is not supported"
+  --register _ _ _ = throwError $ Exception "This operation is not supported"
+  --unregister _ _ _ = throwError $ Exception "This operation is not supported"
+  --expose _ _ _ = throwError $ Exception "This operation is not supported"
+  --hide _ _ _ = throwError $ Exception "This operation is not supported"
+  --list _ _ _ = throwError $ Exception "This operation is not supported"
 
 -- * plugin creation
 
 newPlugin :: String -> ConfiguredProgram -> ToolPlugin
-newPlugin = newPackageManagerPlugin
+newPlugin = newCompilerPlugin
 
 newToolPlugin :: String -> ConfiguredProgram -> ToolPlugin
 newToolPlugin s cp = newPlugin' False False False cp s
@@ -324,15 +343,15 @@ newOutputToolPlugin s cp = newPlugin' True False False cp s
 newPreProcessorPlugin :: String -> ConfiguredProgram -> ToolPlugin
 newPreProcessorPlugin s cp = newPlugin' True True False cp s
 
-newPackageManagerPlugin :: String -> ConfiguredProgram -> ToolPlugin
-newPackageManagerPlugin s cp = newPlugin' True True True cp s
+newCompilerPlugin :: String -> ConfiguredProgram -> ToolPlugin
+newCompilerPlugin s cp = newPlugin' True True True cp s
 
 newPlugin' :: Bool -> Bool -> Bool -> ConfiguredProgram -> String -> ToolPlugin
 newPlugin' ot p pm cp n = ToolPlugin n cp ot p pm
 
 -- * plugin runtime
-mainPlugin :: (PreProcessor t, PackageManager t) => t -> IO ()
-mainPlugin = mainPackageManagerPlugin
+mainPlugin :: (PreProcessor t, Compiler t) => t -> IO ()
+mainPlugin = mainCompilerPlugin
 
 mainToolPlugin :: Tool t => t -> IO ()
 mainToolPlugin t = mainPlugin' t Dummy Dummy Dummy
@@ -343,10 +362,10 @@ mainOutputToolPlugin t = mainPlugin' t t Dummy Dummy
 mainPreProcessorPlugin :: PreProcessor t => t -> IO ()
 mainPreProcessorPlugin t = mainPlugin' t t t Dummy
 
-mainPackageManagerPlugin :: PackageManager t => t -> IO ()
-mainPackageManagerPlugin t = mainPlugin' t t t t
+mainCompilerPlugin :: Compiler t => t -> IO ()
+mainCompilerPlugin t = mainPlugin' t t t t
 
-mainPlugin' :: (Tool t1, OutputTool t2, PreProcessor t3, PackageManager t4) => t1 -> t2 -> t3 -> t4 -> IO ()
+mainPlugin' :: (Tool t1, OutputTool t2, PreProcessor t3, Compiler t4) => t1 -> t2 -> t3 -> t4 -> IO ()
 mainPlugin' t ot p pm = do 
   args <- getArgs
   tm <- case args of
@@ -359,7 +378,7 @@ resToString :: Either ErrorType String -> String
 resToString (Left x) = "Error: " ++ show x
 resToString (Right x) = x
 
-pluginResult :: (Tool t1, OutputTool t2, PreProcessor t3, PackageManager t4) => t1 -> t2 -> t3 -> t4 -> String -> [String] -> ToolMonad String
+pluginResult :: (Tool t1, OutputTool t2, PreProcessor t3, Compiler t4) => t1 -> t2 -> t3 -> t4 -> String -> [String] -> ToolMonad String
 pluginResult t ot p pm f args = case f of
   "--getName" -> do
     r <- return $ getName t
@@ -410,9 +429,9 @@ pluginResult t ot p pm f args = case f of
   "--supportedTargets" -> do
     r <- supportedTargets p $ getProgram p
     return $ show r
-  "--sourceTypes" -> do
+  "--targetTypes" -> do
     ft <- return $ args !! 0
-    r <- sourceTypes p (getProgram p) ft
+    r <- targetTypes p (getProgram p) ft
     return $ show r
   "--directDependencies" -> do
     ft <- return $ args !! 0
@@ -445,33 +464,33 @@ pluginResult t ot p pm f args = case f of
     a <- return $ args !! 0
     r <- outputFileFlagArg p a
     return $ show r
-  "--init" -> do
-    cpm <- return $ readCPM pm $ args !! 0
-    s <- return $ args !! 1
-    r <- init pm cpm s
-    return $ show r
-  "--register" -> do
-    cpm <- return $ readCPM pm $ args !! 0
-    s <- return $ args !! 1
-    r <- register pm cpm s
-    return $ show r
-  "--unregister" -> do
-    cpm <- return $ readCPM pm $ args !! 0
-    s <- return $ args !! 1
-    r <- unregister pm cpm s
-    return $ show r
-  "--expose" -> do
-    cpm <- return $ readCPM pm $ args !! 0
-    s <- return $ args !! 1
-    r <- expose pm cpm s
-    return $ show r
-  "--hide" -> do
-    cpm <- return $ readCPM pm $ args !! 0
-    s <- return $ args !! 1
-    r <- hide pm cpm s
-    return $ show r
-  "--list" -> do
-    cpm <- return $ readCPM pm $ args !! 0
-    s <- return $ args !! 1
-    r <- list pm cpm s
-    return $ show r
+  --"--init" -> do
+  --  cpm <- return $ readCPM pm $ args !! 0
+  --  s <- return $ args !! 1
+  --  r <- init pm cpm s
+  --  return $ show r
+  --"--register" -> do
+  --  cpm <- return $ readCPM pm $ args !! 0
+  --  s <- return $ args !! 1
+  --  r <- register pm cpm s
+  --  return $ show r
+  --"--unregister" -> do
+  --  cpm <- return $ readCPM pm $ args !! 0
+  --  s <- return $ args !! 1
+  --  r <- unregister pm cpm s
+  --  return $ show r
+  --"--expose" -> do
+  --  cpm <- return $ readCPM pm $ args !! 0
+  --  s <- return $ args !! 1
+  --  r <- expose pm cpm s
+  --  return $ show r
+  --"--hide" -> do
+  --  cpm <- return $ readCPM pm $ args !! 0
+  --  s <- return $ args !! 1
+  --  r <- hide pm cpm s
+  --  return $ show r
+  --"--list" -> do
+  --  cpm <- return $ readCPM pm $ args !! 0
+  --  s <- return $ args !! 1
+  --  r <- list pm cpm s
+  --  return $ show r

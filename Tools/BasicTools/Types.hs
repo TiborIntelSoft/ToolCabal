@@ -7,17 +7,20 @@ import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe
 import Data.List (intercalate)
-import System.FilePath (combine, (</>), pathSeparator, (<.>))
+import Development.Shake.FilePath (combine, (</>), pathSeparator, (<.>))
 import Control.Lens hiding (Setting, (<.>))
 import Control.Monad.State
 import Control.Monad.Except
 import Language.Haskell.Exts (parseFile, Module(..), ImportDecl(..), ParseResult(..), ModuleName(..))
-
+import Development.Shake.FilePath
 
 import Cabal
 import Tools.Flag
 import Tools.DSet
-import Tools.Core.Core
+import Tools.Core.Types
+import Tools.Core.Utils
+import Tools.Core.Plugin (Dummy(..))
+import Tools.Core.TypedMonad
 
 import Debug
 
@@ -28,6 +31,12 @@ import Debug
 ---------------------------------------
 -- ** Tool Data types
 ---------------------------------------
+
+data GhcPkg = GhcPkg
+  deriving (Ord, Eq, Show)
+
+data Ar = Ar
+  deriving (Ord, Eq, Show)
 
 data Haddock = Haddock
   deriving (Ord, Eq, Show)
@@ -52,18 +61,27 @@ data UHC = UHC
 ---------------------------------------
 
 -- ** fileTypes
-haskellType = "*.hs"
-litHaskellType = "*.lhs"
-agType = "*.ag"
-cType = "*.c"
-objectType = "*.o"
+haskellType = "hs"
+litHaskellType = "lhs"
+agType = "ag"
+cType = "c"
+objectType = "o"
+interfaceFile = "hi"
+profObjectType = "p_o"
+profInterfaceFile = "p_hi"
 
+-- ** base targets
+jsFile = "plain javascript"
+debugJsFile = "debug javascript"
+normalFile = "plain bytecode"
+profFile = "profiling bytecode"
+debugFile = "debug bytecode"
 
 -- ** targets
-javascriptFile = "plain javascript executable"
-libJsFile = "plain javascript library"
-javascriptDebugFile = "debug javascript executable"
-libJsDebugFile = "debug javascript library"
+jsExeFile = "plain javascript executable"
+jsLibFile = "plain javascript library"
+debugJsExeFile = "debug javascript executable"
+debugjsLibFile = "debug javascript library"
 exeFile = "plain bytecode executable"
 libFile = "plain bytecode library"
 profExeFile = "profiling bytecode executable"
@@ -77,11 +95,25 @@ getImportList f = do
   pr <- liftIO $ parseFile f
   hf <- case pr of
     ParseOk a -> return a
+    _ -> error $ show pr
   return $ S.toList $ S.fromList $ map (toFilePath . getImportModule) $ getImportDecls hf
   where toFilePath m = map (\x -> if x == '.' then pathSeparator else x) m <.> "hs"
         getImportDecls (Module _ _ _ _ _ i _) =  i
         getImportModule (ImportDecl _ (ModuleName m) _ _ _ _ _) = m
   
+---------------------------------------
+-- * Ghc-Pkg
+---------------------------------------
+
+supportedGHCPkgFlags :: DSet Flag
+supportedGHCPkgFlags = emptyDSet
+
+---------------------------------------
+-- * Ar
+---------------------------------------
+
+supportedArFlags :: DSet Flag
+supportedArFlags = emptyDSet
 
 ---------------------------------------
 -- * Haddock
@@ -422,6 +454,17 @@ supportedUHCFlags = pkgDependent <&&> hideOnlyOne <&&> (forceEmptyDSet <*|> (sin
 -- ** Tool Instances
 ---------------------------------------
 
+instance Tool GhcPkg where
+  getName _ = "ghc-pkg"
+  supportedFlags _ _ = return supportedGHCPkgFlags
+
+instance Tool Ar where
+  getName _ = "ar"
+  supportedFlags _ _ = return supportedArFlags
+  --flagToString _ f = return $ case f ^. shortName of
+  --  "oFile" -> [fromJust $ f ^. defaultArgument]
+  --  _ -> flagToProgArg f
+
 instance Tool Haddock where
   getName _ = "haddock"
   supportedFlags _ _ = return supportedHaddockFlags
@@ -463,6 +506,11 @@ instance Tool UHC where
 -- ** OutputTool Instances
 ---------------------------------------
 
+instance OutputTool GhcPkg where
+
+instance OutputTool Ar where
+  outputFileFlag _ = return . newShortFlagWithArgument "r"
+
 instance OutputTool Haddock where
   outputDirFlag _ = return . newFlagWithArgument "odir"
 
@@ -491,44 +539,129 @@ instance OutputTool UHC where
 -- ** PreProcessor Instances
 ---------------------------------------
 
+instance PreProcessor GhcPkg where
+
+instance PreProcessor Ar where
+
 instance PreProcessor CppHs where
 
 instance PreProcessor UUAGC where
  
 instance PreProcessor GHC where
-  supportedTargets _ _ = return [exeFile, libFile, profExeFile, profLibFile]
-  sourceTypes _ _ _ = return [haskellType, litHaskellType, objectType]
+  supportedTargets _ _ = return [normalFile, profFile, exeFile, libFile, profExeFile, profLibFile]
+  targetTypes _ _ target = 
+    if target == normalFile then
+        return [s objectType, s interfaceFile]
+    else if target == profFile then
+        return [s profObjectType, s profInterfaceFile]
+    else if target == exeFile then
+        return [("{x}" <.> exe, "exe")]
+    else if target == libFile then
+        return [("LibHS{x}-{version}.a", "lib")]
+    else if target == profExeFile then
+        return [("{x}-prof" <.> exe, "exe")]
+    else if target == profLibFile then
+        return [("LibHS{x}-{version}_p.a", "lib")]
+    else 
+        throwError $ Exception $ "Target not supported: " ++ target
+    where s x = ("{x}" <.> x, x)
   directDependencies _ cp target targetType = case targetType of
     "exe" -> return ["{sources}.o"]
-    "lib" -> return ["{sources}.o", "{sources}.hi"]
+    "lib" -> return ["{sources}.o"]
     "o" -> return ["{x}.hs"]
-    "o-prof" -> return ["{x}.hs"]
+    "p_o" -> return ["{x}.hs"]
+    "hi" -> return ["{x}.o"]
+    "p_hi" -> return ["{x}.p_o"]
     x -> throwError $ Exception $ "Can not produce file of type " ++ x
   indirectDependencies _ cp target targetType dDeps =  case targetType of
     "exe" -> return []
     "lib" -> return []
     "o" -> do 
       x <- mapM getImportList dDeps
-      return $ concat x
-    "o-prof" -> do 
+      y <- return $ map (\z -> z -<.> "hi") $ concat x
+      return y
+    "p_o" -> do 
       x <- mapM getImportList dDeps
-      return $ concat x
+      y <- return $ map (\z -> z -<.> "p_hi") $ concat x
+      return y
+    "hi" -> return []
+    "p_hi" -> return []
     x -> throwError $ Exception $ "Can not produce file of type " ++ x
-  transFormStep _ cp target targetType targetFile allDeps = undefined
+  transFormStep p cp target targetType targetFile allDeps = case targetType of
+    "exe" -> do
+      cp1 <- foldM (\ct f -> addInputFile ct f) cp $ concat allDeps
+      configureForInvoke p $ cp1 ^. configuredOutputTool
+    "lib" -> do
+      ar1 <- return $ emptyConfigureOutputTool Ar
+      ar2 <- foldM (\ct f -> addInputFile ct f) ar1 $ concat allDeps
+      ar3 <- setOutputFile ar2 targetFile
+      configureForInvoke Ar ar3 
+    "o" -> do
+      cp1 <- foldM (\ct f -> addInputFile ct f) cp $ head allDeps
+      cp2 <- setFlag cp1 $ newShortFlag "c"
+      configureForInvoke p $ cp2 ^. configuredOutputTool
+    "p_o" -> do
+      cp1 <- foldM (\ct f -> addInputFile ct f) cp $ head allDeps
+      cp2 <- setFlag cp1 $ newShortFlag "c"
+      cp3 <- setFlag cp2 $ newShortFlagWithArgument "hisuf" "p_hi"
+      cp4 <- setFlag cp3 $ newShortFlagWithArgument "osuf" "p_o"
+      configureForInvoke p $ cp4 ^. configuredOutputTool
+    -- these are generated when the .o file is generated
+    -- crashes if the .hi files are deleted and the .o files not
+    "hi" -> return $ emptyConfigureTool Dummy
+    "p_hi" -> return $ emptyConfigureTool Dummy
 
 instance PreProcessor UHC where 
+  supportedTargets _ _ = return [normalFile, exeFile, libFile] --return [normalFile, debugFile, jsFile, debugJsFile, exeFile, libFile, debugExeFile, debugLibFile, jsExeFile, jsLibFile, debugJsExeFile, debugjsLibFile]
+  targetTypes _ _ target = 
+    if target == normalFile then
+        return []
+    else if target == exeFile then
+        return [("{x}" <.> exe, "exe")]
+    else if target == libFile then
+        return [("lib{x}-{version}.a", "lib")]
+    else 
+        throwError $ Exception $ "Target not supported: " ++ target
+    where s x = (x, x)
+  directDependencies _ cp target targetType = case targetType of
+    "exe" -> return ["{sources}.hs"]
+    "lib" -> return ["{sources}.hs"]
+    x -> throwError $ Exception $ "Can not produce file of type " ++ x
+  indirectDependencies _ cp target targetType dDeps =  case targetType of
+    "exe" -> return []
+    "lib" -> return []
+    x -> throwError $ Exception $ "Can not produce file of type " ++ x
+  transFormStep p cp target targetType targetFile allDeps = case targetType of
+    "exe" -> do
+      cp1 <- foldM (\ct f -> addInputFile ct f) cp $ head allDeps
+      cp2 <- setFlag cp1 $ newFlagWithArgument "pkg-expose" "uhcbase"
+      configureForInvoke p $ cp2 ^. configuredOutputTool
+    "lib" -> undefined
 
 ---------------------------------------
--- ** PackageManager Instances
+-- ** Compiler Instances
 ---------------------------------------
 
-instance PackageManager GHC where
-  packageFlag _ = return . newShortFlagWithArgument "package"
-  hideAllPackagesFlag _ = return $ newShortFlag "hide-all-packages"
+instance Compiler GhcPkg where
 
-instance PackageManager UHC where
-  packageFlag _ = return . newFlagWithArgument "pkg-expose"
-  hideAllPackagesFlag _ = return $ newFlag "pkg-hide-all"
+instance Compiler Ar where
+
+instance Compiler GHC where
+  getLibInstallExtensions _ _ target = if target == libFile then
+        return ["{x}.hi"]
+    else if target == profLibFile then
+        return ["{x}.p_hi"]
+    else 
+        return [] --throwError $ Exception $ "Target not supported: " ++ target
+  getLibInstallDir _ _ t _ = return $ "~/.cabal/lib/ghc/{pkg}-{version}/" ++ t
+  getExeInstallDir _ _ _ _ = return $ "~/.cabal/bin"
+  getIncludeInstallDir _ _ _ = return "~/.cabal/include/ghc/{pkg}-{version}"
+  packageFlag _ _ = return . newShortFlagWithArgument "package"
+  hideAllPackagesFlag _ _ = return $ newShortFlag "hide-all-packages"
+
+instance Compiler UHC where
+  packageFlag _ _ = return . newFlagWithArgument "pkg-expose"
+  hideAllPackagesFlag _ _ = return $ newFlag "pkg-hide-all"
 
 
 ---------------------------------------

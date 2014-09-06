@@ -57,7 +57,8 @@ library
                         lens,
                         mtl >= 2.2,
                         uu-parsinglib,
-                        shake
+                        shake,
+                        haskell-src-exts
 
 executable toolCabal
     main-is:            Main.hs
@@ -72,4 +73,5 @@ executable toolCabal
                         lens,
                         mtl,
                         uu-parsinglib,
-                        shake
+                        shake,
+                        haskell-src-exts

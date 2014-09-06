@@ -21,7 +21,7 @@ data IstTool = IstTool
 
 instance Tool IstTool where
   invokeTool _ ct = do 
-    liftIO $ traceShow ct $ copyFile source target
+    liftIO $ copyFile source target
     return $ "File " ++ source ++ " copied to " ++ target
     where source = head $ ct ^. arguments
           target = case getFlags "target" $ ct ^. flags of

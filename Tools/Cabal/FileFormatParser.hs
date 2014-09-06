@@ -33,12 +33,13 @@ pVersion :: Parser Version
 pVersion = (\x -> Version x []) <$> ((pToken "Version:" *> pSpaces) *> pNumList)
 
 pNumList :: Parser [Int]
-pNumList = (:) <$> pInteger <*> pList (pToken "." *> pInteger) <* pSpaces
+pNumList = (:) <$> pInteger <*> pList_ng (pToken "." *> pInteger) <* pSpaces
 
 pLibrary :: Parser Library
 pLibrary = Library
   <$> ((pToken "Library:" *> pSpaces) *> pIdent)
-  <*> ((pToken "Exposed Modules:" *> pSpaces) *> pBraces (pList pIdent))
+  <*> pVersion
+  <*> ((pToken "Exposed modules:" *> pSpaces) *> pList_ng pFilePath)
   <*> pSourceInfo
 
 pExecutable :: Parser Executable
@@ -54,7 +55,8 @@ pToolDescription = Executable
   <*> pSourceInfo
 
 pFilePath :: Parser String
-pFilePath = pList1 (pDigit <|> pLetter <|> pSym '/' <|> pSym '\\' <|> pSym '.' <|> pSym '-' <|> pSym '_') <* pSpaces
+pFilePath = pList1 pAllowedSyms <* pSpaces <<|> pQuotedString
+  where pAllowedSyms = pDigit <|> pLetter <|> pSym '/' <|> pSym '\\' <|> pSym '.' <|> pSym '-' <|> pSym '_'
 
 pSourceInfo :: Parser SourceInfo
 pSourceInfo = f
@@ -76,7 +78,10 @@ pPreprocess = pParens ((\x y z -> (x, y, z))
   <* pSpaces
 
 pSetFlag :: Parser (Set Flag)
-pSetFlag = S.fromList <$> pList pFlag
+pSetFlag = S.fromList <$> pFlags
+
+pFlags :: Parser [Flag]
+pFlags = pList pFlag
 
 pFlag :: Parser Flag
 pFlag = pLongFlag <<|> pShortFlag
@@ -84,12 +89,15 @@ pFlag = pLongFlag <<|> pShortFlag
 pLongFlag :: Parser Flag
 pLongFlag = (\x y -> Flag "" x Nothing y "")
   <$> (pToken "--" *> pIdent)
-  <*> pMaybe (pToken "=" *> pFilePath)
+  <*> pMaybe pArgument
 
 pShortFlag :: Parser Flag
 pShortFlag = (\x y -> Flag x "" Nothing y "")
   <$> (pToken "-" *> pIdent)
-  <*> pMaybe (pToken "=" *> pFilePath)
+  <*> pMaybe pArgument
+
+pArgument :: Parser String
+pArgument = pToken "=" *> pFilePath
 
 toSourceInfo :: [Either SourceFile PreprocessFile] -> ([SourceFile], [PreprocessFile])
 toSourceInfo [] = ([],[])

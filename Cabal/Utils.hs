@@ -26,7 +26,7 @@ import System.Environment
     ( getProgName )
 import System.Exit
     ( exitWith, ExitCode(..) )
-import System.FilePath
+import Development.Shake.FilePath
     ( normalise, (</>), (<.>)
     , getSearchPath, takeDirectory, splitFileName
     , splitExtension, splitExtensions, splitDirectories )
@@ -57,16 +57,11 @@ import qualified System.Process as Process (CreateProcess(..))
 import Control.Concurrent (forkIO)
 import System.Process (runInteractiveProcess, waitForProcess, proc,
                        StdStream(..))
-#if __GLASGOW_HASKELL__ >= 702
-import System.Process (showCommandForUser)
-#endif
 
-#ifndef mingw32_HOST_OS
-import System.Posix.Signals (installHandler, sigINT, sigQUIT, Handler(..))
-import System.Process.Internals (defaultSignal, runGenProcess_)
-#else
+import System.Process (showCommandForUser)
+
 import System.Process (createProcess)
-#endif
+
 
 import Debug
 -------------------
@@ -170,11 +165,8 @@ printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args
  | verbosity >= deafening = print (path, args)
  | verbosity >= verbose   =
-#if __GLASGOW_HASKELL__ >= 702
                             putStrLn $ showCommandForUser path args
-#else
-                            putStrLn $ unwords (path : args)
-#endif
+
  | otherwise              = return ()
 
 rawSystemStdInOut :: Verbosity
@@ -255,33 +247,9 @@ printRawCommandAndArgsAndEnv verbosity path args env
 -- way that rawSystem handles it, but rawSystem doesn't allow us to pass
 -- an environment.
 syncProcess :: String -> Process.CreateProcess -> IO ExitCode
-#if mingw32_HOST_OS
 syncProcess _fun c = do
   (_,_,_,p) <- createProcess c
   waitForProcess p
-#else
-syncProcess fun c = do
-  -- The POSIX version of system needs to do some manipulation of signal
-  -- handlers.  Since we're going to be synchronously waiting for the child,
-  -- we want to ignore ^C in the parent, but handle it the default way
-  -- in the child (using SIG_DFL isn't really correct, it should be the
-  -- original signal handler, but the GHC RTS will have already set up
-  -- its own handler and we don't want to use that).
-  r <- Exception.bracket (installHandlers) (restoreHandlers) $
-       (\_ -> do (_,_,_,p) <- runGenProcess_ fun c
-                              (Just defaultSignal) (Just defaultSignal)
-                 waitForProcess p)
-  return r
-    where
-      installHandlers = do
-        old_int  <- installHandler sigINT  Ignore Nothing
-        old_quit <- installHandler sigQUIT Ignore Nothing
-        return (old_int, old_quit)
-      restoreHandlers (old_int, old_quit) = do
-        _ <- installHandler sigINT  old_int Nothing
-        _ <- installHandler sigQUIT old_quit Nothing
-        return ()
-#endif  /* mingw32_HOST_OS */
 
 die :: String -> IO a
 die msg = ioError (userError msg)
